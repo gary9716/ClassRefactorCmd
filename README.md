@@ -1,7 +1,6 @@
 # Visual Studio Extension Project - Class Refactor Utility
 ## Introduction
-It is a visual studio extension project that demonstrate how to rename a class name programmatically in script file written in csharp for example.
-It utilize the refactoring function provided in Visual Studio.
+It is a visual studio extension project that demonstrate how to rename a class name programmatically, so one can rename bunch of script files easily without doing the tedious refactoring operation one by one in the Visual Studio GUI.
 
 ## How to use
 1. download this repository
