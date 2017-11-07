@@ -109,7 +109,8 @@ namespace ClassRefactorCmd
             string filePath = "test.cs";
             //filePath can also be a partial path like "Folder1\\SubFolder\\test.cs";
             ProjectItem item = dte.Solution.FindProjectItem(filePath);
-            if(item != null)
+            int numScriptRenamedSucceed = 0;
+            if (item != null)
             {
                 //use regular expression to recognize csharp script file
                 Match match = Regex.Match(item.FileNames[0], @".+\.cs$");
@@ -119,6 +120,7 @@ namespace ClassRefactorCmd
                     if(renameClassName(item.FileCodeModel.CodeElements, "TestClass", "NewTestClass"))
                     {
                         Debug.WriteLine("renaming succeed");
+                        numScriptRenamedSucceed++;
                     }
                     else
                     {
@@ -130,37 +132,71 @@ namespace ClassRefactorCmd
             {
                 Debug.WriteLine("file not found");
             }
+
+            //if script was successfully saved, then save all projects.(Of course, one can only save the project that have been changed)
+            if(numScriptRenamedSucceed > 0)
+            {
+                //I didn't find a way to save solution directly with old solution name.
+                //so I just use the save function provided in project level.
+                Projects projects = dte.Solution.Projects;
+                foreach(Project project in projects)
+                {
+                    try
+                    {
+                        project.Save(); //save with old project name
+                    }
+                    catch(Exception exp)
+                    {
+
+                    }
+                }
+            }
             
         }
 
         bool renameClassName(CodeElements elements, string oldClassName, string newClassName)
         {
+            bool changingNameFailed = false;
             foreach(CodeElement element in elements)
             {
                 try
                 {
                     CodeElement2 element2 = element as CodeElement2;
-                    if(element2.Kind == vsCMElement.vsCMElementClass //it's a class node in syntax tree
-                        && element2.Name == oldClassName) 
+                    if((element2.Kind == vsCMElement.vsCMElementClass //it's a class node in syntax tree
+                        //|| element2.Kind == vsCMElement.vsCMElementInterface //it's an interface node
+                        ) && element2.Name == oldClassName) 
                     {
+                        changingNameFailed = true;
                         element2.RenameSymbol(newClassName);
-                        element2.ProjectItem.Save();//save the changed
                         //if renaming succeed, program will reach here without exception being caught.
                         return true;
                     }
                 }
                 catch(Exception e)
                 {
-                    Debug.WriteLine(e.ToString());
+                    if(changingNameFailed)
+                    {
+                        return false;
+                    }
+
+                    //Debug.WriteLine(e.ToString());
                 }
 
                 if(element.Kind == vsCMElement.vsCMElementNamespace)
                 {
-                    return renameClassName(((CodeNamespace)element).Members, oldClassName, newClassName);
+                    if(renameClassName(((CodeNamespace)element).Members, oldClassName, newClassName))
+                    {
+                        return true;
+                    }
+                    //else continue
                 }
                 else if(element.IsCodeType)
                 {
-                    return renameClassName(((CodeType)element).Members, oldClassName, newClassName);
+                    if(renameClassName(((CodeType)element).Members, oldClassName, newClassName))
+                    {
+                        return true;
+                    }
+                    //else continue
                 }
             }
 
